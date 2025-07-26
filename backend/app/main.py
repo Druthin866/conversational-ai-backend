@@ -58,3 +58,24 @@ def chat(user_message: str, user_id: int, conversation_id: int = None, db: Sessi
         "user_message": user_message,
         "ai_response": ai_response
     }
+
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
+from chat import process_user_message
+from database import SessionLocal
+from models import User, Conversation, Message
+
+app = FastAPI()
+
+class ChatRequest(BaseModel):
+    user_id: int
+    message: str
+    conversation_id: int = None
+
+@app.post("/api/chat")
+def chat_endpoint(request: ChatRequest):
+    db = SessionLocal()
+    try:
+        return process_user_message(db, request)
+    finally:
+        db.close()
