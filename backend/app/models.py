@@ -1,13 +1,18 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from app.database import Base
 
+# ===================== #
+#  User Model
+# ===================== #
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String)
     last_name = Column(String)
-    email = Column(String)
+    email = Column(String, unique=True)
+    username = Column(String, unique=True, nullable=False)
     age = Column(Integer)
     gender = Column(String)
     state = Column(String)
@@ -18,12 +23,20 @@ class User(Base):
     latitude = Column(Float)
     longitude = Column(Float)
     traffic_source = Column(String)
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Relationships
+    sessions = relationship("ChatSession", back_populates="user")
+    orders = relationship("Order", back_populates="user")
+
+
+# ===================== #
+#  Order Models
+# ===================== #
 class Order(Base):
     __tablename__ = "orders"
     order_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer)
+    user_id = Column(Integer, ForeignKey("users.id"))
     status = Column(String)
     gender = Column(String)
     created_at = Column(DateTime)
@@ -32,11 +45,15 @@ class Order(Base):
     delivered_at = Column(DateTime)
     num_of_item = Column(Integer)
 
+    user = relationship("User", back_populates="orders")
+    order_items = relationship("OrderItem", back_populates="order")
+
+
 class OrderItem(Base):
     __tablename__ = "order_items"
     id = Column(Integer, primary_key=True)
-    order_id = Column(Integer)
-    user_id = Column(Integer)
+    order_id = Column(Integer, ForeignKey("orders.order_id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
     product_id = Column(Integer)
     inventory_item_id = Column(Integer)
     status = Column(String)
@@ -46,6 +63,12 @@ class OrderItem(Base):
     returned_at = Column(DateTime)
     sale_price = Column(Float)
 
+    order = relationship("Order", back_populates="order_items")
+
+
+# ===================== #
+#  Product Model
+# ===================== #
 class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True)
@@ -58,6 +81,10 @@ class Product(Base):
     sku = Column(String)
     distribution_center_id = Column(Integer)
 
+
+# ===================== #
+#  Inventory
+# ===================== #
 class InventoryItem(Base):
     __tablename__ = "inventory_items"
     id = Column(Integer, primary_key=True)
@@ -73,6 +100,10 @@ class InventoryItem(Base):
     product_sku = Column(String)
     product_distribution_center_id = Column(Integer)
 
+
+# ===================== #
+#  Distribution Center
+# ===================== #
 class DistributionCenter(Base):
     __tablename__ = "distribution_centers"
     id = Column(Integer, primary_key=True)
@@ -80,23 +111,19 @@ class DistributionCenter(Base):
     latitude = Column(Float)
     longitude = Column(Float)
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
-from sqlalchemy.orm import relationship
-from datetime import datetime
 
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, nullable=False)
-    sessions = relationship("ChatSession", back_populates="user")
-
+# ===================== #
+#  Chat System Models
+# ===================== #
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
+
     user = relationship("User", back_populates="sessions")
     messages = relationship("Message", back_populates="session")
+
 
 class Message(Base):
     __tablename__ = "messages"
@@ -105,5 +132,5 @@ class Message(Base):
     sender = Column(String)  # 'user' or 'ai'
     message = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
-    session = relationship("ChatSession", back_populates="messages")
 
+    session = relationship("ChatSession", back_populates="messages")
