@@ -1,10 +1,11 @@
 import os
 import requests
-from models import Conversation, Message, User
 from sqlalchemy.orm import Session
+from .models import ChatSession, Message
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+
 HEADERS = {
     "Authorization": f"Bearer {GROQ_API_KEY}",
     "Content-Type": "application/json"
@@ -23,30 +24,30 @@ def generate_ai_response(prompt: str) -> str:
     return response.json()["choices"][0]["message"]["content"]
 
 def process_user_message(db: Session, request):
-    # Get or create conversation
+    # Get or create session
     if request.conversation_id:
-        conversation = db.query(Conversation).filter(Conversation.id == request.conversation_id).first()
+        session = db.query(ChatSession).filter(ChatSession.id == request.conversation_id).first()
     else:
-        conversation = Conversation(user_id=request.user_id)
-        db.add(conversation)
+        session = ChatSession(user_id=request.user_id)
+        db.add(session)
         db.commit()
-        db.refresh(conversation)
+        db.refresh(session)
 
     # Save user message
     user_msg = Message(
-        conversation_id=conversation.id,
+        session_id=session.id,
         sender="user",
         message=request.message
     )
     db.add(user_msg)
     db.commit()
 
-    # Generate AI response
+    # Get AI response
     ai_response = generate_ai_response(request.message)
 
-    # Save AI message
+    # Save AI response
     ai_msg = Message(
-        conversation_id=conversation.id,
+        session_id=session.id,
         sender="ai",
         message=ai_response
     )
@@ -54,7 +55,7 @@ def process_user_message(db: Session, request):
     db.commit()
 
     return {
-        "conversation_id": conversation.id,
+        "conversation_id": session.id,
         "user_message": request.message,
         "ai_response": ai_response
     }
